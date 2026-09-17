@@ -61,7 +61,7 @@
 
 const API_URL = "https://script.google.com/macros/s/AKfycbyp0KvD4oEn33_3GvkSWu76DebCOGqNyVUyttZJBD_X-x-AXZ8CCTkeHLuo9eQpiy-L/exec";
 
-const PAINEL = "Painel-01";
+const PAINEL = new URLSearchParams(window.location.search).get("painel") || "Painel-01";
 
 const player = document.getElementById("player");
 const status = document.getElementById("status");
