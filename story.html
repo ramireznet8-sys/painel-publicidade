@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+      content="width=device-width,
+               initial-scale=1.0">
+
+<title>Story • Painel de Mídia Digital</title>
+
+<style>
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  font-family: Arial, sans-serif;
+}
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Área vertical 9:16 */
+
+#story {
+  width: min(100vw, calc(100vh * 9 / 16));
+  height: min(100vh, calc(100vw * 16 / 9));
+
+  position: relative;
+
+  background: #000;
+
+  overflow: hidden;
+}
+
+/* Anúncios */
+
+.slide {
+  position: absolute;
+
+  inset: 0;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  opacity: 0;
+
+  transition: opacity 1s ease-in-out;
+
+  pointer-events: none;
+}
+
+.slide.active {
+  opacity: 1;
+}
+
+.slide img {
+  width: 100%;
+  height: 100%;
+
+  object-fit: cover;
+
+  display: block;
+}
+
+/* Status */
+
+#status {
+
+  position: fixed;
+
+  left: 12px;
+  bottom: 10px;
+
+  z-index: 100;
+
+  color: rgba(255,255,255,.6);
+
+  font-size: 12px;
+
+  background: rgba(0,0,0,.4);
+
+  padding: 5px 8px;
+
+  border-radius: 5px;
+
+  transition: opacity .5s;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div id="story"></div>
+
+<div id="status">
+  Story Player • modo teste
+</div>
+
+
+<script>
+
+const API_URL =
+"https://script.google.com/macros/s/AKfycbyp0KvD4oEn33_3GvkSWu76DebCOGqNyVUyttZJBD_X-x-AXZ8CCTkeHLuo9eQpiy-L/exec";
+
+
+/* Identificação do painel */
+
+const PAINEL =
+new URLSearchParams(window.location.search)
+.get("painel") || "Painel-01";
+
+
+const story =
+document.getElementById("story");
+
+const status =
+document.getElementById("status");
+
+
+/* Limpa URLs */
+
+function limparUrl(valor) {
+
+  if (!valor) return "";
+
+  let url = String(valor).trim();
+
+  const markdown =
+    url.match(/\[.*?\]\((https?:\/\/[^)]+)\)/);
+
+  if (markdown) {
+
+    url = markdown[1];
+
+  }
+
+  url =
+    url.replace(/\\&/g, "&");
+
+  return url;
+}
+
+
+/* Carrega anúncios */
+
+async function carregarAnuncios() {
+
+  try {
+
+    const resposta =
+      await fetch(API_URL + "?t=" + Date.now());
+
+    if (!resposta.ok) {
+
+      throw new Error(
+        "Erro HTTP " + resposta.status
+      );
+
+    }
+
+    const dados =
+      await resposta.json();
+
+
+    const anuncios =
+      dados.filter(anuncio => {
+
+        return (
+
+          String(anuncio.status)
+          .toLowerCase() === "ativo"
+
+          &&
+
+          String(anuncio.painel)
+          .toLowerCase() ===
+          PAINEL.toLowerCase()
+
+          &&
+
+          limparUrl(anuncio.imagem) !== ""
+
+        );
+
+      });
+
+
+    if (anuncios.length === 0) {
+
+      story.innerHTML = "";
+
+      status.textContent =
+        "Nenhum anúncio ativo";
+
+      return;
+
+    }
+
+
+    story.innerHTML = "";
+
+
+    anuncios.forEach(
+      (anuncio, indice) => {
+
+        const slide =
+          document.createElement("div");
+
+        slide.className =
+          "slide";
+
+
+        if (indice === 0) {
+
+          slide.classList.add("active");
+
+        }
+
+
+        const imagem =
+          document.createElement("img");
+
+        imagem.src =
+          limparUrl(anuncio.imagem);
+
+        imagem.alt =
+          anuncio.empresa ||
+          "Publicidade";
+
+
+        slide.appendChild(imagem);
+
+        story.appendChild(slide);
+
+      }
+    );
+
+
+    status.textContent =
+      PAINEL +
+      " • " +
+      anuncios.length +
+      " anúncios";
+
+
+    const slides =
+      [...document.querySelectorAll(".slide")];
+
+
+    let atual = 0;
+
+
+    function proximo() {
+
+      if (slides.length <= 1) {
+
+        return;
+
+      }
+
+
+      slides[atual]
+        .classList
+        .remove("active");
+
+
+      atual =
+        (atual + 1) %
+        slides.length;
+
+
+      slides[atual]
+        .classList
+        .add("active");
+
+
+      const tempo =
+        (Number(
+          anuncios[atual].duracao
+        ) || 10) * 1000;
+
+
+      setTimeout(
+        proximo,
+        tempo
+      );
+
+    }
+
+
+    if (slides.length > 1) {
+
+      const primeiroTempo =
+        (Number(
+          anuncios[0].duracao
+        ) || 10) * 1000;
+
+
+      setTimeout(
+        proximo,
+        primeiroTempo
+      );
+
+    }
+
+
+    setTimeout(() => {
+
+      status.style.opacity = "0";
+
+    }, 5000);
+
+
+  }
+
+  catch (erro) {
+
+    console.error(erro);
+
+    status.textContent =
+      "Erro ao conectar ao Painel";
+
+  }
+
+}
+
+
+/* Inicia */
+
+carregarAnuncios();
+
+
+/* Atualiza a programação */
+
+setInterval(
+  carregarAnuncios,
+  60000
+);
+
+
+/* Tela cheia com duplo clique */
+
+document.addEventListener(
+  "dblclick",
+  () => {
+
+    if (
+      !document.fullscreenElement
+    ) {
+
+      document.documentElement
+        .requestFullscreen()
+        .catch(() => {});
+
+    }
+
+  }
+);
+
+</script>
+
+</body>
+
+</html>
