@@ -6,8 +6,7 @@
 <meta charset="UTF-8">
 
 <meta name="viewport"
-      content="width=device-width,
-               initial-scale=1.0">
+      content="width=device-width, initial-scale=1.0">
 
 <title>Story • Painel de Mídia Digital</title>
 
@@ -33,7 +32,7 @@ body {
   justify-content: center;
 }
 
-/* Área vertical 9:16 */
+/* ÁREA VERTICAL 9:16 */
 
 #story {
   width: min(100vw, calc(100vh * 9 / 16));
@@ -46,7 +45,7 @@ body {
   overflow: hidden;
 }
 
-/* Anúncios */
+/* SLIDES */
 
 .slide {
   position: absolute;
@@ -70,6 +69,8 @@ body {
   opacity: 1;
 }
 
+/* IMAGENS */
+
 .slide img {
   width: 100%;
   height: 100%;
@@ -79,7 +80,20 @@ body {
   display: block;
 }
 
-/* Status */
+/* VÍDEOS */
+
+.slide video {
+  width: 100%;
+  height: 100%;
+
+  object-fit: cover;
+
+  display: block;
+
+  background: #000;
+}
+
+/* STATUS */
 
 #status {
 
@@ -122,7 +136,7 @@ const API_URL =
 "https://script.google.com/macros/s/AKfycbyp0KvD4oEn33_3GvkSWu76DebCOGqNyVUyttZJBD_X-x-AXZ8CCTkeHLuo9eQpiy-L/exec";
 
 
-/* Identificação do painel */
+/* PAINEL */
 
 const PAINEL =
 new URLSearchParams(window.location.search)
@@ -136,7 +150,7 @@ const status =
 document.getElementById("status");
 
 
-/* Limpa URLs */
+/* LIMPA URL */
 
 function limparUrl(valor) {
 
@@ -160,7 +174,24 @@ function limparUrl(valor) {
 }
 
 
-/* Carrega anúncios */
+/* IDENTIFICA SE É VÍDEO */
+
+function ehVideo(url) {
+
+  const urlLimpa =
+    url.toLowerCase().split("?")[0];
+
+  return (
+    urlLimpa.endsWith(".mp4") ||
+    urlLimpa.endsWith(".webm") ||
+    urlLimpa.endsWith(".mov") ||
+    urlLimpa.endsWith(".m4v")
+  );
+
+}
+
+
+/* CARREGA ANÚNCIOS */
 
 async function carregarAnuncios() {
 
@@ -169,6 +200,7 @@ async function carregarAnuncios() {
     const resposta =
       await fetch(API_URL + "?t=" + Date.now());
 
+
     if (!resposta.ok) {
 
       throw new Error(
@@ -176,6 +208,7 @@ async function carregarAnuncios() {
       );
 
     }
+
 
     const dados =
       await resposta.json();
@@ -236,18 +269,55 @@ async function carregarAnuncios() {
         }
 
 
-        const imagem =
-          document.createElement("img");
-
-        imagem.src =
+        const url =
           limparUrl(anuncio.imagem);
 
-        imagem.alt =
-          anuncio.empresa ||
-          "Publicidade";
+
+        /* VÍDEO */
+
+        if (ehVideo(url)) {
+
+          const video =
+            document.createElement("video");
 
 
-        slide.appendChild(imagem);
+          video.src = url;
+
+          video.autoplay = false;
+
+          video.muted = true;
+
+          video.playsInline = true;
+
+          video.loop = false;
+
+          video.preload = "auto";
+
+
+          slide.appendChild(video);
+
+        }
+
+
+        /* IMAGEM */
+
+        else {
+
+          const imagem =
+            document.createElement("img");
+
+
+          imagem.src = url;
+
+          imagem.alt =
+            anuncio.empresa ||
+            "Publicidade";
+
+
+          slide.appendChild(imagem);
+
+        }
+
 
         story.appendChild(slide);
 
@@ -269,6 +339,44 @@ async function carregarAnuncios() {
     let atual = 0;
 
 
+    function reproduzirAtual() {
+
+      const slide =
+        slides[atual];
+
+
+      const video =
+        slide.querySelector("video");
+
+
+      if (video) {
+
+        video.currentTime = 0;
+
+        video.play().catch(() => {});
+
+      }
+
+    }
+
+
+    function pararVideo(slide) {
+
+      const video =
+        slide.querySelector("video");
+
+
+      if (video) {
+
+        video.pause();
+
+        video.currentTime = 0;
+
+      }
+
+    }
+
+
     function proximo() {
 
       if (slides.length <= 1) {
@@ -276,6 +384,9 @@ async function carregarAnuncios() {
         return;
 
       }
+
+
+      pararVideo(slides[atual]);
 
 
       slides[atual]
@@ -293,10 +404,32 @@ async function carregarAnuncios() {
         .add("active");
 
 
-      const tempo =
-        (Number(
-          anuncios[atual].duracao
-        ) || 10) * 1000;
+      reproduzirAtual();
+
+
+      const anuncio =
+        anuncios[atual];
+
+
+      let tempo =
+        (Number(anuncio.duracao) || 10)
+        * 1000;
+
+
+      const video =
+        slides[atual]
+        .querySelector("video");
+
+
+      /* Se for vídeo, usa a duração
+         programada, limitada a 15 segundos */
+
+      if (video) {
+
+        tempo =
+          Math.min(tempo, 15000);
+
+      }
 
 
       setTimeout(
@@ -307,12 +440,37 @@ async function carregarAnuncios() {
     }
 
 
+    /* PRIMEIRO ANÚNCIO */
+
+    reproduzirAtual();
+
+
     if (slides.length > 1) {
 
-      const primeiroTempo =
+      const primeiroAnuncio =
+        anuncios[0];
+
+
+      let primeiroTempo =
         (Number(
-          anuncios[0].duracao
+          primeiroAnuncio.duracao
         ) || 10) * 1000;
+
+
+      const primeiroVideo =
+        slides[0]
+        .querySelector("video");
+
+
+      if (primeiroVideo) {
+
+        primeiroTempo =
+          Math.min(
+            primeiroTempo,
+            15000
+          );
+
+      }
 
 
       setTimeout(
@@ -344,12 +502,12 @@ async function carregarAnuncios() {
 }
 
 
-/* Inicia */
+/* INICIA */
 
 carregarAnuncios();
 
 
-/* Atualiza a programação */
+/* ATUALIZA PROGRAMAÇÃO */
 
 setInterval(
   carregarAnuncios,
@@ -357,7 +515,7 @@ setInterval(
 );
 
 
-/* Tela cheia com duplo clique */
+/* TELA CHEIA */
 
 document.addEventListener(
   "dblclick",
