@@ -83,6 +83,58 @@ const API_URL = "https://script.google.com/macros/s/AKfycbyp0KvD4oEn33_3GvkSWu76
 
 const PAINEL = "Painel-01";
 
+ const CIDADE = "Guarujá";
+const LATITUDE = -23.9931;
+const LONGITUDE = -46.2563;
+
+async function atualizarClima() {
+  try {
+    const resposta = await fetch(
+      `https://api.open-meteo.com/v1/forecast?latitude=${LATITUDE}&longitude=${LONGITUDE}&current=temperature_2m,weather_code&timezone=America%2FSao_Paulo`
+    );
+
+    const dados = await resposta.json();
+
+    const temperatura = Math.round(dados.current.temperature_2m);
+    const codigo = dados.current.weather_code;
+
+    let condicao = "Tempo estável";
+    let icone = "🌤️";
+
+    if (codigo === 0) {
+      condicao = "Céu limpo";
+      icone = "☀️";
+    } else if ([1, 2, 3].includes(codigo)) {
+      condicao = "Nublado";
+      icone = "☁️";
+    } else if ([45, 48].includes(codigo)) {
+      condicao = "Neblina";
+      icone = "🌫️";
+    } else if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(codigo)) {
+      condicao = "Chuva";
+      icone = "🌧️";
+    } else if ([95, 96, 99].includes(codigo)) {
+      condicao = "Tempestade";
+      icone = "⛈️";
+    }
+
+    const clima = document.getElementById("clima");
+
+    if (clima) {
+      clima.innerHTML =
+        `${icone} ${CIDADE} • ${temperatura}°C • ${condicao}`;
+    }
+
+  } catch (erro) {
+    console.log("Erro ao consultar o clima:", erro);
+  }
+}
+
+atualizarClima();
+
+// Atualiza o clima a cada 10 minutos
+setInterval(atualizarClima, 10 * 60 * 1000);
+
 const player = document.getElementById("player");
 const status = document.getElementById("status");
 
