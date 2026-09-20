@@ -1,1 +1,784 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
 
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0">
+
+<title>Story V2 • Painel de Mídia Digital</title>
+
+<style>
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+
+  margin: 0;
+
+  width: 100%;
+  height: 100%;
+
+  overflow: hidden;
+
+  background: #000;
+
+  font-family: Arial, sans-serif;
+}
+
+body {
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+}
+
+
+/* ÁREA 9:16 */
+
+#story {
+
+  width: min(
+    100vw,
+    calc(100vh * 9 / 16)
+  );
+
+  height: min(
+    100vh,
+    calc(100vw * 16 / 9)
+  );
+
+  position: relative;
+
+  overflow: hidden;
+
+  background: #000;
+}
+
+
+/* SLIDE */
+
+.slide {
+
+  position: absolute;
+
+  inset: 0;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  opacity: 0;
+
+  transition:
+    opacity 0.8s ease-in-out;
+
+  pointer-events: none;
+}
+
+.slide.active {
+
+  opacity: 1;
+
+  pointer-events: auto;
+}
+
+
+/* IMAGEM */
+
+.slide img {
+
+  width: 100%;
+  height: 100%;
+
+  object-fit: cover;
+
+  display: block;
+}
+
+
+/* VÍDEO */
+
+.slide video {
+
+  width: 100%;
+  height: 100%;
+
+  object-fit: cover;
+
+  display: block;
+
+  background: #000;
+}
+
+
+/* STATUS */
+
+#status {
+
+  position: fixed;
+
+  left: 12px;
+  bottom: 10px;
+
+  z-index: 100;
+
+  color: rgba(255,255,255,.65);
+
+  font-size: 12px;
+
+  background:
+    rgba(0,0,0,.45);
+
+  padding: 5px 8px;
+
+  border-radius: 5px;
+
+  transition:
+    opacity .5s;
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+<div id="story"></div>
+
+<div id="status">
+  Story V2 • carregando...
+</div>
+
+
+<script>
+
+
+/* =====================================================
+   CONFIGURAÇÃO
+===================================================== */
+
+
+const API_URL =
+"https://script.google.com/macros/s/AKfycbyp0KvD4oEn33_3GvkSWu76DebCOGqNyVUyttZJBD_X-x-AXZ8CCTkeHLuo9eQpiy-L/exec";
+
+
+const PAINEL =
+
+  new URLSearchParams(
+    window.location.search
+  ).get("painel")
+
+  ||
+
+  "Painel-01";
+
+
+const story =
+  document.getElementById("story");
+
+
+const status =
+  document.getElementById("status");
+
+
+/* LIMITE MÁXIMO DO VÍDEO */
+
+const LIMITE_VIDEO = 15000;
+
+
+/* =====================================================
+   LIMPA URL
+===================================================== */
+
+
+function limparUrl(valor) {
+
+  if (!valor) return "";
+
+  let url =
+    String(valor).trim();
+
+
+  const markdown =
+    url.match(
+      /\[.*?\]\((https?:\/\/[^)]+)\)/
+    );
+
+
+  if (markdown) {
+
+    url =
+      markdown[1];
+
+  }
+
+
+  url =
+    url.replace(
+      /\\&/g,
+      "&"
+    );
+
+
+  return url;
+
+}
+
+
+/* =====================================================
+   IDENTIFICA VÍDEO
+===================================================== */
+
+
+function ehVideo(url) {
+
+  const base =
+    url
+      .toLowerCase()
+      .split("?")[0];
+
+
+  return (
+
+    base.endsWith(".mp4") ||
+
+    base.endsWith(".webm") ||
+
+    base.endsWith(".m4v") ||
+
+    base.endsWith(".mov")
+
+  );
+
+}
+
+
+/* =====================================================
+   CRIA SLIDE
+===================================================== */
+
+
+function criarSlide(anuncio, indice) {
+
+  const slide =
+    document.createElement("div");
+
+
+  slide.className =
+    "slide";
+
+
+  if (indice === 0) {
+
+    slide.classList.add(
+      "active"
+    );
+
+  }
+
+
+  const url =
+    limparUrl(anuncio.imagem);
+
+
+  /* VÍDEO */
+
+  if (ehVideo(url)) {
+
+    const video =
+      document.createElement("video");
+
+
+    video.src = url;
+
+    video.muted = true;
+
+    video.autoplay = false;
+
+    video.playsInline = true;
+
+    video.preload = "auto";
+
+    video.setAttribute(
+      "webkit-playsinline",
+      ""
+    );
+
+
+    slide.appendChild(video);
+
+  }
+
+
+  /* IMAGEM */
+
+  else {
+
+    const imagem =
+      document.createElement("img");
+
+
+    imagem.src = url;
+
+
+    imagem.alt =
+      anuncio.empresa ||
+      "Publicidade";
+
+
+    slide.appendChild(
+      imagem
+    );
+
+  }
+
+
+  story.appendChild(
+    slide
+  );
+
+}
+
+
+/* =====================================================
+   CARREGAR ANÚNCIOS
+===================================================== */
+
+
+async function carregarAnuncios() {
+
+  try {
+
+    const resposta =
+      await fetch(
+        API_URL +
+        "?t=" +
+        Date.now()
+      );
+
+
+    if (!resposta.ok) {
+
+      throw new Error(
+        "HTTP " +
+        resposta.status
+      );
+
+    }
+
+
+    const dados =
+      await resposta.json();
+
+
+    const anuncios =
+      dados.filter(
+        anuncio => {
+
+          return (
+
+            String(
+              anuncio.status
+            )
+            .trim()
+            .toLowerCase()
+            === "ativo"
+
+            &&
+
+            String(
+              anuncio.painel
+            )
+            .trim()
+            .toLowerCase()
+            ===
+            PAINEL
+              .trim()
+              .toLowerCase()
+
+            &&
+
+            limparUrl(
+              anuncio.imagem
+            ) !== ""
+
+          );
+
+        }
+      );
+
+
+    story.innerHTML = "";
+
+
+    if (
+      anuncios.length === 0
+    ) {
+
+      status.textContent =
+        "Nenhum anúncio ativo";
+
+
+      return;
+
+    }
+
+
+    anuncios.forEach(
+      criarSlide
+    );
+
+
+    status.textContent =
+
+      PAINEL +
+
+      " • " +
+
+      anuncios.length +
+
+      " anúncios";
+
+
+    iniciarPlayer(
+      anuncios
+    );
+
+
+  }
+
+  catch (erro) {
+
+    console.error(
+      erro
+    );
+
+
+    status.textContent =
+      "Erro ao conectar ao painel";
+
+  }
+
+}
+
+
+/* =====================================================
+   PLAYER
+===================================================== */
+
+
+function iniciarPlayer(
+  anuncios
+) {
+
+  const slides =
+    [
+      ...document.querySelectorAll(
+        ".slide"
+      )
+    ];
+
+
+  if (
+    slides.length === 0
+  ) {
+
+    return;
+
+  }
+
+
+  let atual = 0;
+
+  let temporizador = null;
+
+
+  function cancelarTemporizador() {
+
+    if (temporizador) {
+
+      clearTimeout(
+        temporizador
+      );
+
+      temporizador = null;
+
+    }
+
+  }
+
+
+  function pararVideo(slide) {
+
+    const video =
+      slide.querySelector(
+        "video"
+      );
+
+
+    if (video) {
+
+      video.pause();
+
+      try {
+
+        video.currentTime = 0;
+
+      }
+
+      catch (e) {}
+
+    }
+
+  }
+
+
+  function ativarSlide(
+    indice
+  ) {
+
+    slides.forEach(
+      (slide, i) => {
+
+        slide.classList.toggle(
+          "active",
+          i === indice
+        );
+
+      }
+    );
+
+
+    const slide =
+      slides[indice];
+
+
+    const video =
+      slide.querySelector(
+        "video"
+      );
+
+
+    if (video) {
+
+      video.currentTime = 0;
+
+
+      const tocar =
+        video.play();
+
+
+      if (
+        tocar &&
+        typeof tocar.catch ===
+        "function"
+      ) {
+
+        tocar.catch(
+          erro => {
+
+            console.log(
+              "Autoplay bloqueado:",
+              erro
+            );
+
+          }
+        );
+
+      }
+
+
+      /*
+
+        O vídeo nunca poderá
+        permanecer mais de 15s.
+
+      */
+
+      temporizador =
+        setTimeout(
+          proximo,
+          LIMITE_VIDEO
+        );
+
+
+    }
+
+    else {
+
+      /* IMAGEM */
+
+      const anuncio =
+        anuncios[indice];
+
+
+      let segundos =
+        Number(
+          anuncio.duracao
+        );
+
+
+      if (
+        !segundos ||
+        segundos < 1
+      ) {
+
+        segundos = 10;
+
+      }
+
+
+      temporizador =
+        setTimeout(
+
+          proximo,
+
+          segundos * 1000
+
+        );
+
+    }
+
+  }
+
+
+  function proximo() {
+
+    cancelarTemporizador();
+
+
+    pararVideo(
+      slides[atual]
+    );
+
+
+    slides[atual]
+      .classList
+      .remove(
+        "active"
+      );
+
+
+    atual =
+      (atual + 1)
+      % slides.length;
+
+
+    ativarSlide(
+      atual
+    );
+
+  }
+
+
+  /*
+
+    Quando o vídeo terminar
+    antes dos 15 segundos,
+    passa imediatamente.
+
+  */
+
+  slides.forEach(
+    slide => {
+
+      const video =
+        slide.querySelector(
+          "video"
+        );
+
+
+      if (video) {
+
+        video.addEventListener(
+          "ended",
+          () => {
+
+            if (
+              slides[atual]
+              === slide
+            ) {
+
+              proximo();
+
+            }
+
+          }
+        );
+
+      }
+
+    }
+  );
+
+
+  /* PRIMEIRO SLIDE */
+
+  ativarSlide(
+    atual
+  );
+
+}
+
+
+/* =====================================================
+   INICIALIZAÇÃO
+===================================================== */
+
+
+carregarAnuncios();
+
+
+/*
+
+  Atualiza a programação
+  a cada 60 segundos.
+
+*/
+
+setInterval(
+  carregarAnuncios,
+  60000
+);
+
+
+/* =====================================================
+   TELA CHEIA
+===================================================== */
+
+
+document.addEventListener(
+  "dblclick",
+  () => {
+
+    if (
+      !document.fullscreenElement
+    ) {
+
+      document.documentElement
+        .requestFullscreen()
+        .catch(
+          () => {}
+        );
+
+    }
+
+  }
+);
+
+</script>
+
+</body>
+
+</html>
