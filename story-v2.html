@@ -62,6 +62,22 @@ body {
   background: #000;
 }
 
+/* ÁREA 16:9 PARA TELAS HORIZONTAIS */
+
+#story[data-format="wide"] {
+
+  width: min(
+    100vw,
+    calc(100vh * 16 / 9)
+  );
+
+  height: min(
+    100vh,
+    calc(100vw * 9 / 16)
+  );
+
+}
+
 
 /* SLIDE */
 
@@ -378,6 +394,13 @@ async function carregarAnuncios() {
       );
 
     }
+
+
+    /* Proporção definida no cadastro administrativo do painel */
+    story.dataset.format =
+      resposta.headers.get("X-Screen-Format") === "wide"
+        ? "wide"
+        : "vertical";
 
 
     const dados =
