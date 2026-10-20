@@ -170,7 +170,7 @@ body {
 
 
 const API_URL =
-"https://script.google.com/macros/s/AKfycbyp0KvD4oEn33_3GvkSWu76DebCOGqNyVUyttZJBD_X-x-AXZ8CCTkeHLuo9eQpiy-L/exec";
+"https://tela-ativapp.floot.app/_api/player";
 
 
 const PAINEL =
@@ -363,7 +363,9 @@ async function carregarAnuncios() {
     const resposta =
       await fetch(
         API_URL +
-        "?t=" +
+        "?painel=" +
+        encodeURIComponent(PAINEL) +
+        "&t=" +
         Date.now()
       );
 
