@@ -176,6 +176,17 @@ body {
   Story V2 • carregando...
 </div>
 
+<div id="extraAccess" style="display:none;position:fixed;inset:0;z-index:200;background:#07111f;color:#fff;font-family:Arial,sans-serif;padding:24px;align-items:center;justify-content:center;text-align:center">
+  <div style="width:min(420px,100%);background:#101f33;border:1px solid #2b405a;border-radius:16px;padding:24px">
+    <h2 style="margin-top:0">Tela extra Tela Ativa</h2>
+    <p id="extraMessage">Esta tela precisa de autorização para exibir anúncios.</p>
+    <label style="display:block;text-align:left;margin:18px 0 8px">Identificação desta tela</label>
+    <input id="extraName" maxlength="100" value="Celular - tela extra" style="width:100%;padding:12px;border-radius:8px;border:1px solid #52657c;background:#07111f;color:#fff;box-sizing:border-box">
+    <button id="extraRequest" style="margin-top:14px;width:100%;padding:13px;border:0;border-radius:8px;background:#a3e635;color:#14210a;font-weight:bold">Solicitar autorização</button>
+    <p style="font-size:12px;color:#b7c5d8">Painel: <strong id="extraPanel"></strong>. A tela só exibirá anúncios após a autorização administrativa.</p>
+  </div>
+</div>
+
 
 <script>
 
@@ -202,6 +213,23 @@ const PAINEL =
 
 const story =
   document.getElementById("story");
+
+const EXTRA_MODE = new URLSearchParams(window.location.search).get("modo") === "extra";
+const DEVICE_KEY = EXTRA_MODE ? (localStorage.getItem("telaAtivaDeviceKey") || (() => { const key = "device-" + (crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(36).slice(2)); localStorage.setItem("telaAtivaDeviceKey", key); return key; })()) : "";
+const extraAccess = document.getElementById("extraAccess");
+const extraMessage = document.getElementById("extraMessage");
+if (EXTRA_MODE) { extraAccess.style.display = "flex"; document.getElementById("extraPanel").textContent = PAINEL; document.getElementById("extraRequest").addEventListener("click", solicitarAcessoExtra); }
+
+async function solicitarAcessoExtra() {
+  const button = document.getElementById("extraRequest");
+  button.disabled = true; button.textContent = "Enviando solicitação...";
+  try {
+    const response = await fetch("https://tela-ativapp.floot.app/_api/screen_access_request", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ panelCode: PAINEL, deviceKey: DEVICE_KEY, deviceName: document.getElementById("extraName").value.trim() || "Tela extra" }) });
+    const raw = await response.json(); const data = raw && raw.json ? raw.json : raw;
+    extraMessage.textContent = data.message || data.error || "Solicitação enviada. Aguarde a análise administrativa.";
+  } catch (error) { extraMessage.textContent = "Não foi possível enviar. Verifique a conexão e tente novamente."; }
+  finally { button.disabled = false; button.textContent = "Solicitar novamente"; }
+}
 
 
 const status =
@@ -376,14 +404,14 @@ async function carregarAnuncios() {
 
   try {
 
-    const resposta =
-      await fetch(
-        API_URL +
-        "?painel=" +
-        encodeURIComponent(PAINEL) +
-        "&t=" +
-        Date.now()
-      );
+    const feedUrl = API_URL + "?painel=" + encodeURIComponent(PAINEL) + (EXTRA_MODE ? "&modo=extra&deviceKey=" + encodeURIComponent(DEVICE_KEY) : "") + "&t=" + Date.now();
+    const resposta = await fetch(feedUrl, { cache: "no-store" });
+    if (EXTRA_MODE && resposta.status === 403) {
+      const accessData = await resposta.json();
+      extraAccess.style.display = "flex"; extraMessage.textContent = accessData.message || "Esta tela ainda não está autorizada.";
+      story.innerHTML = ""; status.textContent = "Aguardando autorização"; return;
+    }
+    if (EXTRA_MODE && resposta.ok) extraAccess.style.display = "none";
 
 
     if (!resposta.ok) {
