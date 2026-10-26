@@ -216,7 +216,9 @@ const story =
 
 const EXTRA_MODE = new URLSearchParams(window.location.search).get("modo") === "extra";
 const DEVICE_STORAGE_KEY = "telaAtivaDeviceKey:" + PAINEL.trim().toUpperCase();
-const DEVICE_KEY = localStorage.getItem(DEVICE_STORAGE_KEY) || (() => { const key = "device-" + (crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(36).slice(2)); localStorage.setItem(DEVICE_STORAGE_KEY, key); return key; })();
+const DEVICE_KEY = localStorage.getItem(DEVICE_STORAGE_KEY) || localStorage.getItem("telaAtivaDeviceKey") || (() => { const key = "device-" + (crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(36).slice(2)); return key; })();
+localStorage.setItem(DEVICE_STORAGE_KEY, DEVICE_KEY);
+if (!localStorage.getItem("telaAtivaDeviceKey")) localStorage.setItem("telaAtivaDeviceKey", DEVICE_KEY);
 const extraAccess = document.getElementById("extraAccess");
 const extraMessage = document.getElementById("extraMessage");
 document.getElementById("extraPanel").textContent = PAINEL;
