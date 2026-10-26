@@ -215,10 +215,12 @@ const story =
   document.getElementById("story");
 
 const EXTRA_MODE = new URLSearchParams(window.location.search).get("modo") === "extra";
-const DEVICE_KEY = EXTRA_MODE ? (localStorage.getItem("telaAtivaDeviceKey") || (() => { const key = "device-" + (crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(36).slice(2)); localStorage.setItem("telaAtivaDeviceKey", key); return key; })()) : "";
+const DEVICE_STORAGE_KEY = "telaAtivaDeviceKey:" + PAINEL.trim().toUpperCase();
+const DEVICE_KEY = localStorage.getItem(DEVICE_STORAGE_KEY) || (() => { const key = "device-" + (crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(36).slice(2)); localStorage.setItem(DEVICE_STORAGE_KEY, key); return key; })();
 const extraAccess = document.getElementById("extraAccess");
 const extraMessage = document.getElementById("extraMessage");
-if (EXTRA_MODE) { extraAccess.style.display = "flex"; document.getElementById("extraPanel").textContent = PAINEL; document.getElementById("extraRequest").addEventListener("click", solicitarAcessoExtra); }
+document.getElementById("extraPanel").textContent = PAINEL;
+document.getElementById("extraRequest").addEventListener("click", solicitarAcessoExtra);
 
 async function solicitarAcessoExtra() {
   const button = document.getElementById("extraRequest");
@@ -404,15 +406,15 @@ async function carregarAnuncios() {
 
   try {
 
-    const feedUrl = API_URL + "?painel=" + encodeURIComponent(PAINEL) + (EXTRA_MODE ? "&modo=extra&deviceKey=" + encodeURIComponent(DEVICE_KEY) : "") + "&t=" + Date.now();
+    const feedUrl = API_URL + "?painel=" + encodeURIComponent(PAINEL) + "&deviceKey=" + encodeURIComponent(DEVICE_KEY) + (EXTRA_MODE ? "&modo=extra" : "") + "&t=" + Date.now();
     const resposta = await fetch(feedUrl, { cache: "no-store" });
-    if (EXTRA_MODE && (resposta.status === 403 || resposta.headers.get("X-Screen-Access") !== "authorized")) {
+    if (resposta.status === 403 || resposta.headers.get("X-Screen-Access") !== "authorized") {
       let accessData = {};
       try { accessData = await resposta.json(); } catch (e) {}
       extraAccess.style.display = "flex"; extraMessage.textContent = accessData.message || "Esta tela ainda não está autorizada. Atualize a página e solicite autorização.";
       story.innerHTML = ""; status.textContent = "Aguardando autorização"; return;
     }
-    if (EXTRA_MODE && resposta.ok && resposta.headers.get("X-Screen-Access") === "authorized") extraAccess.style.display = "none";
+    if (resposta.ok && resposta.headers.get("X-Screen-Access") === "authorized") extraAccess.style.display = "none";
 
 
     if (!resposta.ok) {
