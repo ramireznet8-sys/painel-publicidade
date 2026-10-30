@@ -791,26 +791,8 @@ function iniciarPlayer(
 
 
 /* =====================================================
-   SINAL DE PRESENÇA DO PLAYER
-===================================================== */
-
-async function enviarSinal() {
-  try {
-    await fetch(
-      API_URL + "?painel=" + encodeURIComponent(PAINEL) + "&sinal=1&t=" + Date.now(),
-      { cache: "no-store" }
-    );
-  } catch (erro) {
-    console.warn("Não foi possível enviar o sinal do player:", erro);
-  }
-}
-
-enviarSinal();
-setInterval(enviarSinal, 30000);
-
-
-/* =====================================================
    INICIALIZAÇÃO
+   O refresh do feed também atualiza o último sinal do painel.
 ===================================================== */
 
 
